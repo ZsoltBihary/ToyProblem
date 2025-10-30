@@ -40,7 +40,7 @@ class Config:
             # ===== Reward specification =====
             discount_factor: float = 0.99,  # One-period discount factor used in PV(reward)
             half_bidask: float = 1.0,  # bid-ask trading friction parameter
-            risk_aversion: float = 0.01,  # weight on variance in mean-variance utility
+            risk_aversion: float = 0.02,  # weight on variance in mean-variance utility
 
             # ===== Epsilon-soft action selection =====
             epsilon: float = 0.1,  # for epsilon-greedy action selection
