@@ -1,6 +1,6 @@
 import torch
 from torch import Tensor
-from src.config import Config, PriceSeq, PosSeq, State, Action, Reward, action_2_pos
+from src.config import Config, State, Action, Reward, action_2_pos
 
 
 class Environment:
@@ -15,14 +15,12 @@ class Environment:
         self.vol = conf.volatility
         self.kappa = conf.mean_reversion
         # === Reward specification
-        self.disc_f = conf.discount_factor
         self.half_ba = conf.half_bidask
         self.risk_av = conf.risk_aversion
-        # === Action interpretation
-        # self.action_pos = conf.action_pos
-        # === Initialize state tensors
+
+        # ===== Initialize state tensors
         self.price_seq = self._simulate_initial_price_seq()
-        self.pos_seq = torch.zeros((self.B, self.T), dtype=torch.float32)
+        self.pos = torch.zeros(self.B, dtype=torch.float32)
 
     def _simulate_next_price(self, current_price: Tensor) -> Tensor:
         """Simulate one-step mean-reverting price update."""
@@ -52,29 +50,29 @@ class Environment:
         new_pos = action_2_pos(action)
         new_price = self._simulate_next_price(self.price_seq[:, -1])
         d_price = new_price - self.price_seq[:, -1]
-        reward = new_pos * d_price                                         # daily return
-        reward -= self.half_ba * torch.abs(new_pos - self.pos_seq[:, -1])  # bid-ask friction
-        reward -= self.risk_av * ((self.vol * new_pos) ** 2.0)             # risk aversion
-        # === Compute *functional* new state = (new_price_seq, new_pos_seq)
+        reward = new_pos * d_price                                  # daily return
+        reward -= self.half_ba * torch.abs(new_pos - self.pos)      # bid-ask friction
+        reward -= self.risk_av * ((self.vol * new_pos) ** 2.0)      # risk aversion
+        # === Compute *functional* new state = (new_price_seq, new_pos)
         new_price_seq = torch.roll(self.price_seq, shifts=-1, dims=1)
         new_price_seq[:, -1] = new_price
-        new_pos_seq = torch.roll(self.pos_seq, shifts=-1, dims=1)
-        new_pos_seq[:, -1] = new_pos
+        # new_pos = self.pos
+        # new_pos_seq[:, -1] = new_pos
         # === in-place commit
         self.price_seq.copy_(new_price_seq)
-        self.pos_seq.copy_(new_pos_seq)
+        self.pos.copy_(new_pos)
         # === return safe, detached output tensors
-        state = new_price_seq.detach(), new_pos_seq.detach()
-        return state, reward
+        state = new_price_seq.detach(), new_pos.detach()
+        return state, reward.detach()
 
-    def print_data(self, price_seq, pos_seq, n=3, reward=None):
+    def print_data(self, price_seq, pos, n=3, reward=None):
         n = min(n, self.B)
         for i in range(n):
             prices = price_seq[i].cpu().numpy()
             # positions = pos_seq[i].cpu().numpy().astype(int)
-            positions = pos_seq[i].cpu().numpy()
+            position = pos[i].cpu().numpy()
             print(f"[Agent {i:02d}] Prices: {prices.round(2)}")
-            print(f"           Pos   : {positions}")
+            print(f"           Pos   : {position}")
             if reward is not None:
                 rew = reward[i].cpu().numpy()
                 print(f"           Reward : {float(rew):.2f}")
@@ -91,7 +89,7 @@ class Environment:
         print(f"Environment snapshot (showing {n}/{self.B} agents):")
         print(f"vol={self.vol:.4f}, kappa={self.kappa:.4f}, mean={self.S_mean:.2f}")
         print("-" * 60)
-        self.print_data(price_seq=self.price_seq, pos_seq=self.pos_seq, n=n)
+        self.print_data(price_seq=self.price_seq, pos=self.pos, n=n)
 
 
 # ------------------ SANITY CHECK ------------------ #

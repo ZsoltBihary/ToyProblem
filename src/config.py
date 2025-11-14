@@ -3,12 +3,13 @@ from torch import Tensor
 
 # ===== Aliases to make type-setting more expressive =====
 PriceSeq = Tensor       # shape: (B, T)
-PosSeq = Tensor         # shape: (B, T)
-State = tuple[PriceSeq, PosSeq]
+Position = Tensor       # shape: (B, )
+State = tuple[PriceSeq, Position]
+QValues = Tensor        # shape: (B, A)
 Action = Tensor         # shape: (B,)
 Reward = Tensor         # shape: (B,)
 
-# ===== For possible GPU acceleration in selected parts of the algorithm =====
+# ===== For possible GPU acceleration in selected parts of the program =====
 GPU_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -23,40 +24,57 @@ def pos_2_action(pos: Tensor) -> Tensor:
 
 
 class Config:
-    # === Action interpretation as positions ===
-    num_actions: int = 3  # A
 
     def __init__(
             self,
             # ===== Data tensor sizes =====
-            batch_size: int = 128,  # B, number of parallel simulations
-            window_size: int = 10,  # T, lookback window size
+            num_actions: int = 3,           # A, number of possible actions
+            batch_size: int = 16,           # B, number of parallel simulations
+            window_size: int = 10,          # T, lookback window size
 
             # ===== Price dynamics =====
-            S_mean: float = 100.0,
-            volatility: float = 2.0,  # daily volatility
-            mean_reversion: float = 0.1,  # inverse mean-reversion timescale
+            S_mean: float = 100.0,          # mean-reversion price level
+            volatility: float = 2.0,        # daily volatility
+            mean_reversion: float = 0.1,    # inverse mean-reversion timescale
 
             # ===== Reward specification =====
-            discount_factor: float = 0.99,  # One-period discount factor used in PV(reward)
-            half_bidask: float = 1.0,  # bid-ask trading friction parameter
-            risk_aversion: float = 0.02,  # weight on variance in mean-variance utility
+            gamma: float = 0.99,            # one-period discount factor used in PV(reward)
+            half_bidask: float = 1.0,       # bid-ask trading friction parameter
+            risk_aversion: float = 0.02,    # weight on variance in mean-variance utility
 
-            # ===== Epsilon-soft action selection =====
-            epsilon: float = 0.1,  # for epsilon-greedy action selection
-            temperature: float = 0.1,  # for soft action selection
+            # ===== Exploration parameters =====
+            epsilon: float = 0.1,           # for epsilon-greedy action selection
+            temperature: float = 0.1,       # for soft action selection
+
+            # ===== QModel specification =====
+            hidden_dim: int = 32,           # number of hidden features in Q-model
+
+            # ===== Training cycle control =====
+            rollout_steps: int = 100,       # R, number of rollout steps
+            buffer_mult: int = 2,           # number of rollouts that fills the replay buffer
+            learning_rate: float = 0.001,   # initial learning rate for optimization
+            use_ddqn: bool = True,          # flag for double deep Q-learning
     ):
         # ===== Data tensor sizes
+        self.num_actions = num_actions
         self.batch_size = batch_size
         self.window_size = window_size
-        # ===== PriceSeq dynamics
+        # ===== Price dynamics
         self.S_mean = S_mean
         self.volatility = volatility
         self.mean_reversion = mean_reversion
         # ===== Reward specification
-        self.discount_factor = discount_factor
+        self.gamma = gamma
         self.half_bidask = half_bidask
         self.risk_aversion = risk_aversion
-        # ===== Epsilon-soft action selection
+        # ===== Exploration parameters
         self.epsilon = epsilon
         self.temperature = temperature
+        # ===== QModel specification
+        self.hidden_dim = hidden_dim
+        # ===== Training cycle control
+        self.rollout_steps = rollout_steps
+        self.buffer_mult = buffer_mult
+        self.buffer_capacity = buffer_mult * rollout_steps * batch_size
+        self.learning_rate = learning_rate
+        self.use_ddqn = use_ddqn

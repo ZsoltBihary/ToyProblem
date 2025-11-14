@@ -4,7 +4,7 @@ from src.config import Config
 
 # Consume configuration
 conf = Config()
-delta = conf.discount_factor
+delta = conf.gamma
 kappa = conf.mean_reversion * 1.0
 beta = conf.half_bidask * 1.0
 sigma = conf.volatility
