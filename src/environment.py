@@ -36,8 +36,20 @@ class Environment:
             price_seq[:, t+1] = self._simulate_next_price(price_seq[:, t])
         return price_seq
 
+    def get_state(self) -> State:
+        return (
+            self.price_seq.detach().clone(),
+            self.pos.detach().clone(),
+        )
+
+    def reset(self):
+        """Optional: reinitialize environment."""
+        self.price_seq = self._simulate_initial_price_seq()
+        self.pos = torch.zeros(self.B)
+        return self.get_state()
+
     @torch.no_grad()
-    def resolve_action(self, action: Action) -> tuple[State, Reward]:
+    def step(self, action: Action) -> tuple[State, Reward]:
         """
         Advance the environment one time-step given an action.
         Args:
@@ -100,9 +112,9 @@ if __name__ == "__main__":
     print("\n ***** Initial state of market environment:")
     market.print_env(n=n_show)
     action = 0 * torch.ones(conf.batch_size, dtype=torch.long)  # Short
-    ((price_seq1, pos_seq1), reward1) = market.resolve_action(action)
+    ((price_seq1, pos_seq1), reward1) = market.step(action)
     action = 2 * torch.ones(conf.batch_size, dtype=torch.long)  # Long
-    ((price_seq2, pos_seq2), reward2) = market.resolve_action(action)
+    ((price_seq2, pos_seq2), reward2) = market.step(action)
     print("\n ***** Final state of market environment:")
     market.print_env(n=n_show)
     print("\n ***** Last output of resolve_action():")

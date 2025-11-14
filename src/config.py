@@ -54,6 +54,9 @@ class Config:
             buffer_mult: int = 2,           # number of rollouts that fills the replay buffer
             learning_rate: float = 0.001,   # initial learning rate for optimization
             use_ddqn: bool = True,          # flag for double deep Q-learning
+            num_epochs: int = 2,            # number of num_epochs in one training cycle
+            minibatch_size: int = 32,       # minibatch size used in one training step
+            target_update: int = 1          # number of rollout+training cycles between target network updates
     ):
         # ===== Data tensor sizes
         self.num_actions = num_actions
@@ -78,3 +81,6 @@ class Config:
         self.buffer_capacity = buffer_mult * rollout_steps * batch_size
         self.learning_rate = learning_rate
         self.use_ddqn = use_ddqn
+        self.num_epochs = num_epochs
+        self.minibatch_size = minibatch_size
+        self.target_update = target_update

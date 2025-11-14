@@ -30,3 +30,39 @@ class QModel(nn.Module):
         x = torch.cat([price_seq, pos.unsqueeze(-1)], dim=-1)
         q_values = self.net(x)
         return q_values
+
+
+if __name__ == "__main__":
+    from src.environment import Environment
+    from src.config import Config
+    from torchinfo import summary
+
+    # --- Create config and environment ---
+    conf = Config()
+    env = Environment(conf)
+    state = env.get_state()  # (price_seq, pos)
+
+    # --- Create the model ---
+    model = QModel(conf)
+    output = model(state)
+    print(f"Output shape: {output.shape}")
+
+    # --- Wrap model in a tiny nn.Module for torchinfo ---
+    class QModelWrapper(nn.Module):
+        def __init__(self, model):
+            super().__init__()
+            self.model = model
+
+        def forward(self, price_seq, pos):
+            return self.model((price_seq, pos))
+
+    wrapper = QModelWrapper(model)
+
+    # --- Run summary ---
+    summary(
+        wrapper,
+        input_data=(state[0], state[1]),
+        col_names=["input_size", "output_size", "num_params"],
+        depth=3,
+        verbose=1
+    )
