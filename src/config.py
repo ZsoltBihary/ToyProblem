@@ -29,8 +29,8 @@ class Config:
             self,
             # ===== Data tensor sizes =====
             num_actions: int = 3,           # A, number of possible actions
-            batch_size: int = 16,           # B, number of parallel simulations
-            window_size: int = 10,          # T, lookback window size
+            batch_size: int = 128,           # B, number of parallel simulations
+            window_size: int = 2,          # T, lookback window size
 
             # ===== Price dynamics =====
             S_mean: float = 100.0,          # mean-reversion price level
@@ -43,19 +43,21 @@ class Config:
             risk_aversion: float = 0.02,    # weight on variance in mean-variance utility
 
             # ===== Exploration parameters =====
-            epsilon: float = 0.1,           # for epsilon-greedy action selection
-            temperature: float = 0.1,       # for soft action selection
+            epsilon: float = 0.05,           # for epsilon-greedy action selection
+            temperature: float = 0.01,       # for soft action selection
 
             # ===== QModel specification =====
-            hidden_dim: int = 32,           # number of hidden features in Q-model
+            num_blocks=6,                   # number of residual blocks
+            use_layernorm=False,            # flag for layer norm
+            hidden_dim: int = 16,           # number of hidden features in Q-model
 
             # ===== Training cycle control =====
             rollout_steps: int = 100,       # R, number of rollout steps
             buffer_mult: int = 2,           # number of rollouts that fills the replay buffer
-            learning_rate: float = 0.001,   # initial learning rate for optimization
+            learning_rate: float = 0.0001,  # initial learning rate for optimization
             use_ddqn: bool = True,          # flag for double deep Q-learning
             num_epochs: int = 2,            # number of num_epochs in one training cycle
-            minibatch_size: int = 32,       # minibatch size used in one training step
+            minibatch_size: int = 128,      # minibatch size used in one training step
             target_update: int = 1          # number of rollout+training cycles between target network updates
     ):
         # ===== Data tensor sizes
@@ -74,6 +76,8 @@ class Config:
         self.epsilon = epsilon
         self.temperature = temperature
         # ===== QModel specification
+        self.num_blocks = num_blocks
+        self.use_layernorm = use_layernorm
         self.hidden_dim = hidden_dim
         # ===== Training cycle control
         self.rollout_steps = rollout_steps

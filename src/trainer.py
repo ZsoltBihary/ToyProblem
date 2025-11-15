@@ -23,13 +23,15 @@ class DQNTrainer:
     # Rollout (collect experience)
     # ------------------------------------------------------------
     @profile
-    def rollout(self):
+    def rollout(self) -> float:
+        self.agent.online_model.eval()
+        sum_reward = 0.0
         state = self.env.get_state()
 
         for _ in range(self.rollout_steps):
             action = self.agent.act(state)
             next_state, reward = self.env.step(action)
-
+            sum_reward += reward.mean().item()
             self.buffer.push(
                 state,
                 action,
@@ -37,14 +39,17 @@ class DQNTrainer:
                 next_state
             )
             state = next_state
-
+        return sum_reward / self.rollout_steps
     # ------------------------------------------------------------
     # Training (optimize Q network)
     # ------------------------------------------------------------
+
     @profile
     def train(self):
         if len(self.buffer) == 0:
             return 0.0
+        self.agent.online_model.train()
+        self.agent.target_model.eval()
 
         dataloader = DataLoader(
             self.buffer,
@@ -65,13 +70,13 @@ class DQNTrainer:
     # ------------------------------------------------------------
     @profile
     def cycle(self, cycle_idx):
-        self.rollout()
+        avg_reward = self.rollout()
         avg_loss = self.train()
 
         if cycle_idx % self.target_update == 0:
             self.agent.update_target_model()
 
-        return avg_loss
+        return avg_loss, avg_reward
 
     # ------------------------------------------------------------
     # Train for N cycles
@@ -79,23 +84,27 @@ class DQNTrainer:
     @profile
     def run(self, n_cycles, verbose=True):
         for i in range(1, n_cycles + 1):
-            avg_loss = self.cycle(i)
+            avg_loss, avg_reward = self.cycle(i)
             if verbose:
                 print(
                     f"[Cycle {i:04d}] "
                     f"buffer {len(self.buffer)}/{self.buffer.capacity} | "
-                    f"avg_loss={avg_loss:.6f}"
+                    f"avg_loss={avg_loss:.4f} | "
+                    f"avg_reward={avg_reward:.4f}"
                 )
 
 
 if __name__ == "__main__":
     conf = Config(
-        batch_size=128,
-        window_size=10,
+        batch_size=512,
+        window_size=2,
         rollout_steps=100,
         buffer_mult=2,
-        learning_rate=1e-3,
-        use_ddqn=True
+        learning_rate=0.0002,
+        use_ddqn=True,
+        use_layernorm=True,
+        num_blocks=3,
+        hidden_dim=16
     )
 
     env = Environment(conf)
@@ -104,5 +113,5 @@ if __name__ == "__main__":
 
     trainer = DQNTrainer(conf, env, agent, buffer)
 
-    trainer.run(n_cycles=5)
+    trainer.run(n_cycles=100)
     print("Training finished.")

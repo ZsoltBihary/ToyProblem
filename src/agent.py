@@ -25,21 +25,27 @@ class DQNAgent:
         self.online_model = QModel(conf)
         self.target_model = QModel(conf)
         self.update_target_model()
+
         self.optimizer = torch.optim.AdamW(
-            self.online_model.parameters(),
-            lr=self.lr
+            params=self.online_model.parameters(),
+            lr=self.lr,
+            weight_decay=1e-3
         )
 
-    def act(self, state: State) -> Action:
+    @torch.no_grad()
+    def act(self, state: State, greedy: bool = False) -> Action:
         q_values = self.online_model(state)
-        action = self.select_action(q_values)
+        if greedy:
+            action = q_values.argmax(dim=-1)
+        else:
+            action = self.soft_action(q_values)
         return action
 
     # ---------------------------------------------------------
     # ACTION SELECTION BASED ON Q-VALUES
     # ---------------------------------------------------------
-
-    def select_action(self, q_values: QValues) -> Action:
+    @torch.no_grad()
+    def soft_action(self, q_values: QValues) -> Action:
         """
         Epsilon-soft strategy, robust version.
         Handles large logits, small temperatures, and avoids NaNs.
@@ -73,7 +79,7 @@ class DQNAgent:
             if not self.use_ddqn:
                 next_q_target = self.target_model((next_prices, next_positions))
                 max_next_q = next_q_target.max(1, keepdim=True)[0]
-                target = rewards.unsqueeze(1) + self.gamma * max_next_q
+                target = (1.0 - self.gamma) * rewards.unsqueeze(1) + self.gamma * max_next_q
             # ---- DOUBLE DQN target ----
             else:
                 # action selection: online model
