@@ -88,3 +88,5 @@ class Config:
         self.num_epochs = num_epochs
         self.minibatch_size = minibatch_size
         self.target_update = target_update
+
+a=1
