@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader
 from src.config import Config
 from src.environment import Environment
-from src.agent import DQNAgent
+from src.dqn_agent import DQNAgent
 from src.replay_buffer import ReplayBuffer
 from line_profiler_pycharm import profile
 

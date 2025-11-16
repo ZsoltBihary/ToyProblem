@@ -2,10 +2,9 @@ import torch
 import matplotlib.pyplot as plt
 from src.config import Config
 from src.environment import Environment
-from src.agent import DQNAgent
+from src.dqn_agent import DQNAgent
 from src.replay_buffer import ReplayBuffer
-from src.trainer import DQNTrainer
-# from line_profiler_pycharm import profile
+from src.dqn_trainer import DQNTrainer
 
 # conf = Config()
 conf = Config(

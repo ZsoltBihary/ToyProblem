@@ -60,6 +60,38 @@ class QModel(nn.Module):
 
 
 # ==============================================================
+#   Residual Block (MLP)
+# ==============================================================
+class ResidualBlock(nn.Module):
+    def __init__(self, dim: int, use_layernorm: bool = False, dropout: float = 0.0):
+        super().__init__()
+
+        self.use_layernorm = use_layernorm
+        self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
+
+        self.norm1 = nn.LayerNorm(dim) if use_layernorm else nn.Identity()
+        self.norm2 = nn.LayerNorm(dim) if use_layernorm else nn.Identity()
+
+        self.fc1 = nn.Linear(dim, dim)
+        self.fc2 = nn.Linear(dim, dim)
+
+        self.act = nn.ReLU()
+
+    def forward(self, x):
+        h = x
+
+        h = self.norm1(h)
+        h = self.fc1(h)
+        h = self.act(h)
+        h = self.dropout(h)            # << recommended location
+
+        h = self.norm2(h)
+        h = self.fc2(h)
+
+        return self.act(x + h)
+
+
+# ==============================================================
 #   Dueling Heads (MLP)
 # ==============================================================
 class DuelingHead(nn.Module):
@@ -90,37 +122,6 @@ class DuelingHead(nn.Module):
         Q = V + (A - A_mean)                   # (B, A)
         return Q
 
-
-# ==============================================================
-#   Residual Block (MLP)
-# ==============================================================
-class ResidualBlock(nn.Module):
-    def __init__(self, dim: int, use_layernorm: bool = False, dropout: float = 0.0):
-        super().__init__()
-
-        self.use_layernorm = use_layernorm
-        self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
-
-        self.norm1 = nn.LayerNorm(dim) if use_layernorm else nn.Identity()
-        self.norm2 = nn.LayerNorm(dim) if use_layernorm else nn.Identity()
-
-        self.fc1 = nn.Linear(dim, dim)
-        self.fc2 = nn.Linear(dim, dim)
-
-        self.act = nn.ReLU()
-
-    def forward(self, x):
-        h = x
-
-        h = self.norm1(h)
-        h = self.fc1(h)
-        h = self.act(h)
-        h = self.dropout(h)            # << recommended location
-
-        h = self.norm2(h)
-        h = self.fc2(h)
-
-        return self.act(x + h)
 
 # ============================ SIMPLE MODEL =================================
 # class QModel(nn.Module):
