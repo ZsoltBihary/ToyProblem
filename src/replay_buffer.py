@@ -53,7 +53,8 @@ class ReplayBuffer(Dataset):
         self.next_prices[start:end] = next_prices
         self.next_positions[start:end] = next_positions
 
-    def __len__(self): return self.size
+    def __len__(self):
+        return self.size
 
     def __getitem__(self, idx: int):
         return (self.prices[idx],

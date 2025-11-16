@@ -29,7 +29,7 @@ class DQNAgent:
         self.optimizer = torch.optim.AdamW(
             params=self.online_model.parameters(),
             lr=self.lr,
-            weight_decay=1e-3
+            weight_decay=1e-5
         )
 
     @torch.no_grad()
@@ -79,7 +79,7 @@ class DQNAgent:
             if not self.use_ddqn:
                 next_q_target = self.target_model((next_prices, next_positions))
                 max_next_q = next_q_target.max(1, keepdim=True)[0]
-                target = (1.0 - self.gamma) * rewards.unsqueeze(1) + self.gamma * max_next_q
+                target = rewards.unsqueeze(1) + self.gamma * max_next_q
             # ---- DOUBLE DQN target ----
             else:
                 # action selection: online model
@@ -96,7 +96,7 @@ class DQNAgent:
         loss = F.mse_loss(chosen_q, target)
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.online_model.parameters(), 10.0)
+        # torch.nn.utils.clip_grad_norm_(self.online_model.parameters(), 10.0)
         self.optimizer.step()
         return loss.item()
 

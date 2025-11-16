@@ -28,9 +28,9 @@ class Config:
     def __init__(
             self,
             # ===== Data tensor sizes =====
-            num_actions: int = 3,           # A, number of possible actions
+            num_actions: int = 3,            # A, number of possible actions
             batch_size: int = 128,           # B, number of parallel simulations
-            window_size: int = 2,          # T, lookback window size
+            window_size: int = 1,            # T, lookback window size
 
             # ===== Price dynamics =====
             S_mean: float = 100.0,          # mean-reversion price level
@@ -40,24 +40,26 @@ class Config:
             # ===== Reward specification =====
             gamma: float = 0.99,            # one-period discount factor used in PV(reward)
             half_bidask: float = 1.0,       # bid-ask trading friction parameter
-            risk_aversion: float = 0.02,    # weight on variance in mean-variance utility
+            risk_aversion: float = 0.04,    # weight on variance in mean-variance utility
 
             # ===== Exploration parameters =====
-            epsilon: float = 0.05,           # for epsilon-greedy action selection
-            temperature: float = 0.01,       # for soft action selection
+            epsilon: float = 0.25,          # for epsilon-greedy action selection
+            temperature: float = 0.001,     # for soft action selection
 
             # ===== QModel specification =====
-            num_blocks=6,                   # number of residual blocks
-            use_layernorm=False,            # flag for layer norm
-            hidden_dim: int = 16,           # number of hidden features in Q-model
+            num_blocks=3,                   # number of residual blocks
+            hidden_dim: int = 32,           # number of hidden features in Q-model
+            use_layernorm=False,             # flag for layer norm
+            dropout=0.00,                   # dropout = 0.0 means no dropout
+            dueling=True,                   # flag for dueling heads
 
             # ===== Training cycle control =====
-            rollout_steps: int = 100,       # R, number of rollout steps
+            rollout_steps: int = 200,       # R, number of rollout steps
             buffer_mult: int = 2,           # number of rollouts that fills the replay buffer
-            learning_rate: float = 0.0001,  # initial learning rate for optimization
+            learning_rate: float = 0.0100,  # initial learning rate for optimization
             use_ddqn: bool = True,          # flag for double deep Q-learning
-            num_epochs: int = 2,            # number of num_epochs in one training cycle
-            minibatch_size: int = 128,      # minibatch size used in one training step
+            num_epochs: int = 1,            # number of num_epochs in one training cycle
+            minibatch_size: int = 256,      # minibatch size used in one training step
             target_update: int = 1          # number of rollout+training cycles between target network updates
     ):
         # ===== Data tensor sizes
@@ -77,8 +79,10 @@ class Config:
         self.temperature = temperature
         # ===== QModel specification
         self.num_blocks = num_blocks
-        self.use_layernorm = use_layernorm
         self.hidden_dim = hidden_dim
+        self.use_layernorm = use_layernorm
+        self.dropout = dropout
+        self.dueling = dueling
         # ===== Training cycle control
         self.rollout_steps = rollout_steps
         self.buffer_mult = buffer_mult
@@ -88,5 +92,3 @@ class Config:
         self.num_epochs = num_epochs
         self.minibatch_size = minibatch_size
         self.target_update = target_update
-
-a=11

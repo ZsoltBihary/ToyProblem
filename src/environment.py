@@ -106,7 +106,7 @@ class Environment:
 
 # ------------------ SANITY CHECK ------------------ #
 if __name__ == "__main__":
-    conf = Config()
+    conf = Config(window_size=10)
     market = Environment(conf)
     n_show = 2
     print("\n ***** Initial state of market environment:")
