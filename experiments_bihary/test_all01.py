@@ -10,7 +10,7 @@ from src.dqn_trainer import DQNTrainer
 conf = Config(
     batch_size=512,
     window_size=1,
-    rollout_steps=50,
+    rollout_steps=100,
     buffer_mult=1,
     learning_rate=0.005,
 
@@ -18,7 +18,7 @@ conf = Config(
     dueling=True,
     use_layernorm=False,
     dropout=0.0,
-    num_blocks=2,
+    num_blocks=3,
     hidden_dim=32
 )
 
@@ -28,13 +28,13 @@ agent = DQNAgent(conf)
 buffer = ReplayBuffer(conf)
 
 trainer = DQNTrainer(conf, train_env, eval_env, agent, buffer)
-trainer.run(n_cycles=50)
+trainer.run(n_cycles=30)
 print("Training finished.")
 
 # Create s-grids, and pos-grids
 mean = conf.S_mean
 num_s = 1001
-min_s, max_s = mean * 0.7, mean * 1.3
+min_s, max_s = 90.0, 110.0
 d_s = (max_s - min_s) / (num_s - 1.0)
 s = (min_s + d_s * torch.arange(num_s)).unsqueeze(1)
 pos = torch.tensor([-1.0, 0.0, 1.0]).repeat(num_s, 1)   # shape (1001, 3)
@@ -45,10 +45,10 @@ for a in range(3):
     state = (s, pos[:, a])
     action[:, a] = agent.act(state, greedy=True)
 
-off = num_s // 3 + 50
-s_np = s[off: -off].cpu().numpy()
+# off = num_s // 3 + 50
+s_np = s.cpu().numpy()
 pos1d = torch.tensor([-1.0, 0.0, 1.0])
-pos_np = pos1d[action[off: -off, :]].cpu().numpy()   # shape (3, 1001)
+pos_np = pos1d[action].cpu().numpy()   # shape (3, 1001)
 
 plt.figure(figsize=(8, 5))
 plt.plot(s_np, pos_np[:, 0], label="from -1")
