@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 from src.config import Config, State, QValues
+from line_profiler_pycharm import profile
 
 
 # ==============================================================
@@ -46,7 +47,7 @@ class QModel(nn.Module):
             self.output_layer = nn.Linear(hidden_dim, num_actions)
 
     # ----------------------------------------------------------
-
+    @profile
     def forward(self, state: State) -> QValues:
         price_seq, pos = state
 
@@ -77,6 +78,7 @@ class ResidualBlock(nn.Module):
 
         self.act = nn.ReLU()
 
+    @profile
     def forward(self, x):
         h = x
 
@@ -115,6 +117,7 @@ class DuelingHead(nn.Module):
             nn.Linear(hidden_dim, num_actions),
         )
 
+    @profile
     def forward(self, h):
         V = self.value(h)                      # (B, 1)
         A = self.advantage(h)                  # (B, A)

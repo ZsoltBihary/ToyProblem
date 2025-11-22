@@ -29,7 +29,7 @@ class DQNTrainer:
     # ------------------------------------------------------------
     @profile
     def rollout(self) -> float:
-        self.agent.online_model.eval()
+        self.agent.online_model_cpu.eval()
         sum_reward = 0.0
         state = self.train_env.get_state()
 
@@ -51,16 +51,16 @@ class DQNTrainer:
     # ------------------------------------------------------------
     @profile
     def evaluate(self) -> float:
-        self.agent.online_model.eval()
+        self.agent.online_model_cpu.eval()
         sum_reward = 0.0
         state = self.eval_env.reset()
-
-        for _ in range(5 * self.rollout_steps):
+        eval_mult = 2
+        for _ in range(eval_mult * self.rollout_steps):
             action = self.agent.act(state, greedy=True)
             next_state, reward = self.eval_env.step(action)
             sum_reward += reward.mean().item()
             state = next_state
-        return sum_reward / self.rollout_steps / 5.0
+        return sum_reward / self.rollout_steps / eval_mult
 
     # ------------------------------------------------------------
     # Training (optimize Q network)
@@ -78,7 +78,7 @@ class DQNTrainer:
         for _ in range(self.num_epochs):
             for batch in dataloader:
                 loss = self.agent.train_step(batch)
-                losses.append(loss)
+                losses.append(loss.item())
 
         return sum(losses) / len(losses)
 
@@ -89,6 +89,8 @@ class DQNTrainer:
     def cycle(self, cycle_idx):
         avg_ro_rew = self.rollout()
         avg_loss = self.train()
+        # after each update → sync CPU rollout model
+        self.agent.sync_cpu_model()
         avg_ev_rew = self.evaluate()
 
         if cycle_idx % self.target_update == 0:

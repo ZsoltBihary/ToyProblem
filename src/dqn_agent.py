@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from src.config import Config, State, Action, QValues
 from src.q_model import QModel
+from line_profiler_pycharm import profile
 
 
 class DQNAgent:
@@ -22,8 +23,17 @@ class DQNAgent:
         self.use_ddqn = conf.use_ddqn
 
         # ===== Set up models, optimization =====
-        self.online_model = QModel(conf)
-        self.target_model = QModel(conf)
+        if conf.train_on_CUDA:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = torch.device("cpu")
+
+        # CPU model → for rollout
+        self.online_model_cpu = QModel(conf).cpu()
+
+        # GPU models → for training
+        self.online_model = QModel(conf).to(self.device)
+        self.target_model = QModel(conf).to(self.device)
         self.update_target_model()
 
         self.optimizer = torch.optim.AdamW(
@@ -34,7 +44,8 @@ class DQNAgent:
 
     @torch.no_grad()
     def act(self, state: State, greedy: bool = False) -> Action:
-        q_values = self.online_model(state)
+        # state must be CPU tensors
+        q_values = self.online_model_cpu(state)
         if greedy:
             action = q_values.argmax(dim=-1)
         else:
@@ -71,34 +82,47 @@ class DQNAgent:
     # ---------------------------------------------------------
     # TRAINING STEP (supports DQN and DDQN)
     # ---------------------------------------------------------
+    @profile
     def train_step(self, batch):
+        # move batch to CUDA
+
+        batch = [b.to(self.device, non_blocking=True) for b in batch]
+
+        # prices, positions, actions, rewards, next_prices, next_positions = [
+        #     x.to(self.device) for x in batch
+        # ]
+
         prices, positions, actions, rewards, next_prices, next_positions = batch
 
         with torch.no_grad():
-            # ---- VANILLA DQN target ----
             if not self.use_ddqn:
                 next_q_target = self.target_model((next_prices, next_positions))
                 max_next_q = next_q_target.max(1, keepdim=True)[0]
                 target = rewards.unsqueeze(1) + self.gamma * max_next_q
-            # ---- DOUBLE DQN target ----
             else:
-                # action selection: online model
                 next_q_online = self.online_model((next_prices, next_positions))
-                next_actions = torch.argmax(next_q_online, dim=1, keepdim=True)
-                # action evaluation: target model
+                next_actions = next_q_online.argmax(1, keepdim=True)
                 next_q_target = self.target_model((next_prices, next_positions))
                 max_next_q = next_q_target.gather(1, next_actions)
                 target = rewards.unsqueeze(1) + self.gamma * max_next_q
 
-        # loss and optimization
+        # compute loss
         q_values = self.online_model((prices, positions))
-        chosen_q = q_values.gather(1, actions.unsqueeze(1))  # shape (B,1)
+        chosen_q = q_values.gather(1, actions.unsqueeze(1))
         loss = F.mse_loss(chosen_q, target)
+
+        # SGD
         self.optimizer.zero_grad()
         loss.backward()
-        # torch.nn.utils.clip_grad_norm_(self.online_model.parameters(), 10.0)
         self.optimizer.step()
-        return loss.item()
+
+        # # after each update → sync CPU rollout model
+        # self.sync_cpu_model()
+
+        return loss.detach().cpu()
+
+    def sync_cpu_model(self):
+        self.online_model_cpu.load_state_dict(self.online_model.state_dict())
 
     def update_target_model(self):
         self.target_model.load_state_dict(self.online_model.state_dict())

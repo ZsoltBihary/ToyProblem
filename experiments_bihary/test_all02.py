@@ -9,20 +9,21 @@ from policy_plotter import PolicyPlotter
 
 # conf = Config()
 conf = Config(
-    batch_size=128,
+    batch_size=256,
     window_size=1,
     rollout_steps=100,
     buffer_mult=2,
     learning_rate=0.005,
 
+    train_on_CUDA=True,
     use_ddqn=True,
     dueling=True,
     use_layernorm=False,
     dropout=0.0,
-    num_blocks=5,
-    hidden_dim=32
+    num_blocks=2,
+    hidden_dim=16
 )
-n_cycles = 50
+n_cycles = 40
 
 train_env = Environment(conf)
 eval_env = Environment(conf)

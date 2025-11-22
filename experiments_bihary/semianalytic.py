@@ -11,8 +11,8 @@ sigma = conf.volatility
 gamma = conf.risk_aversion * sigma * sigma
 mean = conf.S_mean
 # Create s-grids, and pos-grids
-num_s = 1001
-min_s, max_s = mean * 0.7, mean * 1.3
+num_s = 2501
+min_s, max_s = 50.0, 150.0
 d_s = (max_s - min_s) / (num_s - 1.0)
 s = min_s + d_s * torch.arange(num_s)
 pos = torch.tensor([-1.0, 0.0, 1.0])
@@ -30,7 +30,7 @@ V = torch.zeros((3, num_s), dtype=torch.float32)
 Q = torch.zeros((3, num_s, 3), dtype=torch.float32)
 action = torch.zeros((3, num_s), dtype=torch.long)
 # Let us perform the Bell-iteration ...
-for t in range(2000):
+for t in range(5000):
     EQ1 = torch.einsum('sz, bz -> sb', P, V)
     Rew = kappa * (mean - s[None, :, None]) * pos[None, None, :]  # Expected return
     Rew = Rew - beta * torch.abs(pos[None, None, :] - pos[:, None, None])  # Bid-ask friction
@@ -49,9 +49,8 @@ for t in range(2000):
 
 print("Starting from the mean price, with 0 position, value = ", V[1, num_s//2].item())
 
-off = num_s // 3 + 50
-s_np = s[off: -off].cpu().numpy()
-pos_np = pos[action[:, off: -off]].cpu().numpy()   # shape (3, 1001)
+s_np = s[1000:1501].cpu().numpy()
+pos_np = pos[action[:, 1000:1501]].cpu().numpy()   # shape (3, 1001)
 
 plt.figure(figsize=(8, 5))
 plt.plot(s_np, pos_np[0], label="from -1")
